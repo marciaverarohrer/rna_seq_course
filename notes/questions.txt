@@ -1,0 +1,2 @@
+- how keep track of notes? Markdown.md, .ipynb to combine with code? or with a .Rmd?
+for example results and thoughts on the quality of the reads.
