@@ -1,12 +1,15 @@
 #this document contains notes with what was done to keep track of the project
 - first the directory was connected to git and a new repository was created
-- TODO: the cluster repository (data/users/mrohrer/rna_seq_course ) was also connected to git
-- TODO: think about structure / setup in the repo
+- the cluster repository (data/users/mrohrer/rna_seq_course ) was also connected to git
+- think about structure / setup in the repo
 - TODO: create a documentary file with all the versions used in the project (how?)
-- TODO: start making the fastQC check to assess quality
+- start making the fastQC check to assess quality
 - the mentioned container image of fastQC made available was used. with apptainer
-- use the directory where data is made accessible in the cluster (find it?)
+- use the directory where data is made accessible in the cluster
 - bash script created to run this all. create SLURM command for space on the cluster and run with sbatch (make it executable first).
+
+01_fastqc_script.sh (inside it, 01_slurm_script.sh is run)
+
 - view the results, they should be HTML results, similar to bi in silico. connect with VS code to optimally visualize.
 - document what was found! 
 	- total number of reads per sample
@@ -14,3 +17,31 @@
 	- adapter contamination warnings
 	- flagged issues before mapping
 
+second (third part) mapping the sequences on a reference genome (hisat2)
+- first indexing of the fasta .fa file to make it hisat2 usable
+
+02_hisat2_indexing.slurm (sbatch)
+
+- map reads to the reference genome using Hisat2. correct strandedness setting for this library prep protocol is RF.
+	frist here the gtf.gz must be unzipped and then processed before the hisat2 alignment.
+
+02_hisat_gtf_processing.slurm (sbatch)
+
+	https://daehwankimlab.github.io/hisat2/manual/#mapping - here it is mentioned that for known splice sites and exons
+	you can extract this information from a GTF file using the two helper python scripts:
+	hisat2_extract_splice_sites.py and hisat2_extract_exons.py 
+	# there were problems with the container accessing the files in my directory (add -B) :
+	# apptainer exec --bind <local_directory> <container_file.sif> <command> <args>
+
+- now the actual mapping is to be done:
+
+02_hisat2_mapping.sh (run it ./ )(
+	sbatch 02_hisat2_mapping.slurm runs inside the .sh script)
+	# make sure you run from within the /scripts directory (else the sbatch .slurm command wont work)
+	# made sure paths inside container were available
+	# in the end this job was done in 20 minutes and next to sam files, summary txt files were generated.
+
+next step is to:
+- convert the sam files into bam files
+- sort the bam files (by genomic coordinates)
+- index the coordinate sorted files
