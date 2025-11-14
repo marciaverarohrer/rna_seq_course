@@ -39,4 +39,4 @@ apptainer exec -B /data/users/mrohrer/:/mnt $CONTAINER hisat2 -p ${SLURM_CPUS_PE
 --summary-file ${OUT_DIR_IN_CONTAINER}/summary/${SAMPLE_NAME}_summary.txt \
 --rna-strandness RF \
 --known-splicesite-infile $SPLICE_SITE_FILE_IN_CONTAINER
-
+# -1 and -2 give the two directions, two files for each sample, just different directions
