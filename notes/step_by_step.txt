@@ -59,3 +59,13 @@ second (third part) mapping the sequences on a reference genome (hisat2)
 	# this script combines the three steps in one 
 	# again, with --bind /data/..:/data/.. the paths are made available for the container
 
+- TODO make table and overview
+
+- next step is to count reads using feature count, this will lead to a overview table in one file.
+
+03_count_reads_per_gene.sh (run it ./)
+	sbatch 03_count_reads_per_gene.slurm will run inside it.
+	flags are explained within the slurm file, output contained the whole directory
+	
+	with a sed command, it was filtered to show only the strain types in the top line (more overseeable):
+	sed -i 's|/data/users/mrohrer/rna_seq_course/results/alignment/hisat2_mapping/bam/||g' featureCounts_counts.txt.summary > featureCounts_counts.summary_copy
