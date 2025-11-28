@@ -33,7 +33,6 @@ samples <- c(
   "SRR7821923","SRR7821924","SRR7821925","SRR7821927",                    # DKO Case
   "SRR7821940","SRR7821941","SRR7821942"                                 # DKO Control
 )
-
 groups <- c(
   rep("Lung_WT_Case",5),
   rep("Lung_WT_Control",3),
@@ -66,4 +65,26 @@ sorted_coldata <- coldata[order(coldata$sample),]
 sorted_coldata[] <- lapply(sorted_coldata, as.factor)
 sorted_coldata
 coldata # coldata is now in the order of the markdown, but the dataset counts is not yet.
+
+# reorder count columns to match the order of samples in coldata
+counts <- counts[, rownames(coldata), drop = FALSE]
+
+# (optional) ensure coldata only contains the samples present in counts (keeps order)
+coldata <- coldata[rownames(coldata) %in% colnames(counts), , drop = FALSE]
+
+#okay, that seemed to have worked ! :) counts is now in the order of the markdown
+
+# DESeq2 needs defined types, make sure they are correct for use:
+coldata$group <- factor(coldata$group)
+counts <- as.matrix(counts)
+
+dds <- DESeqDataSetFromMatrix(
+  countData = as.matrix(counts[, -1]),     # all except Geneid
+  colData = samples,
+  design = ~ group
+)
+
+# Run DESeq
+dds <- DESeq(dds)
+
 
