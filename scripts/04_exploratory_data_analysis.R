@@ -4,10 +4,15 @@
 # goal is to visualize if different groups show
 # clusters in gene expression - ACP plot
 
+#if (!require("BiocManager", quietly = TRUE))
+#install.packages("BiocManager")
+
+#BiocManager::install("DESeq2")
+
 library(DESeq2)
 
 # first step is to load the data and clean it:
-COUNTS_DIR <- "C:/Users/marci/rna_seq_course/results/03_counts/featureCounts_counts.txt"
+COUNTS_DIR <- "C:/Users/marci/Master/rna_seq_course/results/03_counts/featureCounts_counts.txt"
 # --- 1. Load FeatureCounts table ---
 raw <- read.table(COUNTS_DIR, header=TRUE, comment.char="#")
 
@@ -72,19 +77,145 @@ counts <- counts[, rownames(coldata), drop = FALSE]
 # (optional) ensure coldata only contains the samples present in counts (keeps order)
 coldata <- coldata[rownames(coldata) %in% colnames(counts), , drop = FALSE]
 
-#okay, that seemed to have worked ! :) counts is now in the order of the markdown
+#okay, that worked ! :) counts is now in the order of the markdown
 
 # DESeq2 needs defined types, make sure they are correct for use:
-coldata$group <- factor(coldata$group)
+
+coldata$group <- factor(coldata$group,
+   levels = c("Lung_WT_Control",
+              "Lung_WT_Case",
+              "Lung_DKO_Control",
+              "Lung_DKO_Case"))
 counts <- as.matrix(counts)
 
+#making sure samples is a dataframe and not a vector:
+
+# verify that counts colnames are correct
+colnames(counts)
+
+# create a clean metadata table
+samples <- colnames(counts)
+
+groups <- c(
+  rep("Lung_WT_Case",5),
+  rep("Lung_WT_Control",3),
+  rep("Lung_DKO_Case",4),
+  rep("Lung_DKO_Control",3)
+)
+
+coldata <- data.frame(
+  row.names = samples,
+  group = factor(groups)
+)
+
+
+#checking whether they align (for correct DESeq2 analysis)
+all(rownames(coldata) == colnames(counts))   # must be TRUE
+
 dds <- DESeqDataSetFromMatrix(
-  countData = as.matrix(counts[, -1]),     # all except Geneid
-  colData = samples,
+  countData = counts,
+  colData = coldata,
   design = ~ group
 )
+
 
 # Run DESeq
 dds <- DESeq(dds)
 
+# getting the result table of the dds:
+res <- results(dds)
+head(res)
+#this is a table of all genes and their values.
+# to have highest ones on top we sort this table:
+# we sort by the highest padjsuted value! (this should be most significant gene.)
+res_ordered <- res[order(res$padj), ]
+head(res_ordered)
+
+#save the table in a csv
+write.csv(as.data.frame(res_ordered), file = "deseq2_results.csv")
+
+
+# Variance stabilizing transformation
+var_stab_data <- vst(dds, blind = TRUE)
+
+#PCAplot with the vst data
+plotPCA(var_stab_data, intgroup = "group")
+
+#set reference to lung WT control:
+dds$group <- relevel(dds$group, ref = "Lung_WT_Control")
+dds <- DESeq(dds)
+
+#check if reference correct:
+resultsNames(dds) #worked (output: [1] "Intercept""group_Lung_DKO_Case_vs_Lung_WT_Control"...)
+
+#check wt DKO vs wt control
+res_WT <- results(dds,
+                  contrast = c("group", "Lung_WT_Case", "Lung_WT_Control"),
+                  alpha = 0.05)
+res_WT
+results_WT_ordered <- res_WT[order(res_WT$padj), ]
+head(results_WT_ordered)
+
+#save the table in a csv
+write.csv(as.data.frame(results_WT_ordered), file = "deseq2_results_WT_comparison.csv")
+
+#how many genes are differntially expressed ? (padj < 0.05)
+sum(res_WT$padj < 0.05, na.rm = TRUE)
+#10815
+#How many up-regulated vs down-regulated?
+#Up-regulated (log2FC > 0):
+sum(res_WT$log2FoldChange > 0 & res_WT$padj < 0.05, na.rm = TRUE)
+#5043
+#Down-regulated (log2FC < 0):
+sum(res_WT$log2FoldChange < 0 & res_WT$padj < 0.05, na.rm = TRUE)
+#5772
+
+#Investigate expression of selected genes
+#2–3 genes mentioned in the paper and from there extract normalized counts:
+norm_counts <- counts(dds, normalized = TRUE)
+
+#View counts for a gene:
+norm_counts["ENSMUSG00000012345", ]
+
+# plot boxplots, barplots, etc...
+
+#******************************************************
+
+#set reference to lung DKO control:
+dds$group <- relevel(dds$group, ref = "Lung_DKO_Control")
+dds <- DESeq(dds)
+
+#check if reference correct:
+resultsNames(dds)
+
+# check DKO case vs DKO control : 
+res_DKO <- results(dds,
+                   contrast = c("group", "Lung_DKO_Case", "Lung_DKO_Control"),
+                   alpha = 0.05)
+
+res_DKO
+results_DKO_ordered <- res_DKO[order(res_DKO$padj), ]
+head(results_DKO_ordered)
+
+#save the table in a csv
+write.csv(as.data.frame(results_DKO_ordered), file = "deseq2_results_DKO_comparison.csv")
+
+#how many genes are differntially expressed ? (padj < 0.05)
+sum(res_DKO$padj < 0.05, na.rm = TRUE)
+#11226
+#How many up-regulated vs down-regulated?
+#Up-regulated (log2FC > 0):
+sum(res_DKO$log2FoldChange > 0 & res_DKO$padj < 0.05, na.rm = TRUE)
+#5470
+#Down-regulated (log2FC < 0):
+sum(res_DKO$log2FoldChange < 0 & res_DKO$padj < 0.05, na.rm = TRUE)
+#5756
+
+#Investigate expression of selected genes
+#2–3 genes mentioned in the paper and from there extract normalized counts:
+
+#View counts for a gene:
+norm_counts["ENSMUSG00000012345", ]
+
+# plot boxplots, barplots, etc...
 
