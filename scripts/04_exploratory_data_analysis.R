@@ -68,7 +68,7 @@ sorted_coldata <- coldata[order(coldata$sample),]
 
 #transform all data into factor 
 sorted_coldata[] <- lapply(sorted_coldata, as.factor)
-sorted_coldata
+#sorted_coldata
 coldata # coldata is now in the order of the markdown, but the dataset counts is not yet.
 
 # reorder count columns to match the order of samples in coldata
@@ -134,13 +134,15 @@ head(res_ordered)
 #save the table in a csv
 write.csv(as.data.frame(res_ordered), file = "deseq2_results.csv")
 
-
+#**********************************************
 # Variance stabilizing transformation
 var_stab_data <- vst(dds, blind = TRUE)
 
 #PCAplot with the vst data
 plotPCA(var_stab_data, intgroup = "group")
 
+
+#**********************************************
 #set reference to lung WT control:
 dds$group <- relevel(dds$group, ref = "Lung_WT_Control")
 dds <- DESeq(dds)
@@ -148,7 +150,7 @@ dds <- DESeq(dds)
 #check if reference correct:
 resultsNames(dds) #worked (output: [1] "Intercept""group_Lung_DKO_Case_vs_Lung_WT_Control"...)
 
-#check wt DKO vs wt control
+#check wt case vs wt control
 res_WT <- results(dds,
                   contrast = c("group", "Lung_WT_Case", "Lung_WT_Control"),
                   alpha = 0.05)
@@ -219,3 +221,51 @@ norm_counts["ENSMUSG00000012345", ]
 
 # plot boxplots, barplots, etc...
 
+#******************************************************
+# comparing the CASE, WT vs DKO
+#set reference to lung DKO case:
+dds$group <- relevel(dds$group, ref = "Lung_DKO_Case")
+dds <- DESeq(dds)
+
+#check if reference correct:
+resultsNames(dds)
+
+# check DKO case vs WT case : 
+res_case <- results(dds,
+                   contrast = c("group", "Lung_DKO_Case", "Lung_WT_Case"),
+                   alpha = 0.05)
+
+res_case
+results_case_ordered <- res_case[order(res_case$padj), ]
+head(results_case_ordered)
+
+# top 5 genes:
+# ENSMUSG00000038507 no. 15 in WT comp.
+# ENSMUSG00000025498
+# ENSMUSG00000040033
+# ENSMUSG00000046879 no. 3 in WT comp.
+# ENSMUSG00000078853 no. 2 in WT comp.
+
+#save the table in a csv
+write.csv(as.data.frame(results_case_ordered), file = "deseq2_results_Case_comparison.csv")
+
+#how many genes are differntially expressed ? (padj < 0.05)
+sum(res_case$padj < 0.05, na.rm = TRUE)
+#7805
+#How many up-regulated vs down-regulated?
+#Up-regulated (log2FC > 0):
+sum(res_case$log2FoldChange > 0 & res_case$padj < 0.05, na.rm = TRUE)
+#4232
+#Down-regulated (log2FC < 0):
+sum(res_case$log2FoldChange < 0 & res_case$padj < 0.05, na.rm = TRUE)
+#3573
+
+#Investigate expression of selected genes
+#2–3 genes mentioned in the paper and from there extract normalized counts:
+norm_counts <- counts(dds, normalized = TRUE)
+
+#View counts for a gene:
+x <- norm_counts["ENSMUSG00000046879", ]
+
+# plot boxplots, barplots, etc...
+plot(x)
