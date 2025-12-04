@@ -69,3 +69,6 @@ second (third part) mapping the sequences on a reference genome (hisat2)
 	
 	with a sed command, it was filtered to show only the strain types in the top line (more overseeable):
 	sed -i 's|/data/users/mrohrer/rna_seq_course/results/alignment/hisat2_mapping/bam/||g' featureCounts_counts.txt.summary > featureCounts_counts.summary_copy
+
+04_exploratory_data_analysis.R
+	I wrote the script and ran the exploratory data analysis.
