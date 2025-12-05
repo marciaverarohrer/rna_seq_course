@@ -1,0 +1,5 @@
+/fastqc/reads_Lung
+/results/slurm_output
+/fastqc/results/*.zip
+/data
+/results/alignment
