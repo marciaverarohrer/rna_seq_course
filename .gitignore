@@ -5,3 +5,6 @@
 /results/alignment
 /results/05_overrepresentation_analysis
 /results/04_de_analysis/*.png
+/scripts/.RData
+/scripts/.Rhistory
+DEAnalysisWorkflow.html
