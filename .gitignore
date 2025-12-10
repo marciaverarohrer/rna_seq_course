@@ -3,3 +3,5 @@
 /fastqc/results/*.zip
 /data
 /results/alignment
+/results/05_overrepresentation_analysis
+/results/04_de_analysis/*.png
