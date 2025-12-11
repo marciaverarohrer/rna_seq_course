@@ -58,9 +58,6 @@ coldata <- data.frame(
 )
 rownames(coldata) <- samples
 
-# Ensure metadata sample names match counts columns
-# samples$sample %in% colnames(counts)
-
 # converting sample into factor to sort them
 coldata$sample <- factor(coldata$sample, levels = sort(unique(coldata$sample)))
 # sorting data per sample
@@ -78,7 +75,6 @@ coldata <- coldata[rownames(coldata) %in% colnames(counts), , drop = FALSE]
 
 # counts is now in the order of the markdown
 
-
 #******************************************************************
 # DESeq2 needs defined types, make sure they are correct for use:
 
@@ -89,11 +85,8 @@ coldata$group <- factor(coldata$group,
               "Lung_DKO_Case"))
 counts <- as.matrix(counts)
 
-#making sure samples is a dataframe and not a vector:
-
 # verify that counts colnames are correct
 colnames(counts)
-
 # create a clean metadata table
 samples <- colnames(counts)
 
@@ -109,7 +102,6 @@ coldata <- data.frame(
   group = factor(groups)
 )
 
-
 #checking whether they align (for correct DESeq2 analysis)
 all(rownames(coldata) == colnames(counts))   # must be TRUE
 
@@ -122,18 +114,21 @@ dds <- DESeqDataSetFromMatrix(
 )
 # Run DESeq
 dds <- DESeq(dds)
+saveRDS(dds, "dds_object.rds") #saving to use dds for further analysis
+summary(dds)
 # getting the result table of the dds:
-res <- results(dds)
-head(res)
-#this is a table of all genes and their values.
+res_all <- results(dds, alpha = 0.05)
+head(res_all)
+summary(res_all) #this is a table of all genes and their values.
+
 # to have highest ones on top :
 # we sort by the highest padjsuted value! (this should be most significant gene.)
-results_ordered <- res[order(res$padj), ]
+results_ordered <- res_all[order(res_all$padj), ]
 head(results_ordered)
 resultsNames(dds) #default as reference is the Lung_DKO_case here.
-saveRDS(dds, "dds_object.rds")
+
 #save the table in a csv
-write.csv(as.data.frame(res_ordered), file = "deseq2_results.csv")
+write.csv(as.data.frame(results_ordered), file = "deseq2_results.csv")
 
 #**********************************************
 #set reference to lung WT control:
@@ -148,13 +143,12 @@ resultsNames(dds_wt) #worked (output: [1] "Intercept""group_Lung_DKO_Case_vs_Lun
 res_WT <- results(dds_wt,
                   contrast = c("group", "Lung_WT_Case", "Lung_WT_Control"),
                   alpha = 0.05)
-res_WT
+summary(res_WT)
 results_WT_ordered <- res_WT[order(res_WT$padj), ]
 head(results_WT_ordered)
 
 #save the table in a csv
 write.csv(as.data.frame(results_WT_ordered), file = "deseq2_results_WT_comparison.csv")
-
 
 #******************************************************
 
@@ -228,7 +222,7 @@ sum(res_WT$log2FoldChange < 0 & res_WT$padj < 0.05, na.rm = TRUE)
 #Investigate expression of selected genes
 #2–3 genes mentioned in the paper and from there extract normalized counts:
 norm_counts <- counts(dds, normalized = TRUE)
-
+head(norm_counts)
 #********************************************************
 # DKO results (dds_DKO)
 #how many genes are differntially expressed ? (padj < 0.05)
@@ -271,10 +265,10 @@ norm_counts <- counts(dds, normalized = TRUE)
 #*
 #View counts for a gene:
 x <- norm_counts["ENSMUSG00000046879", ]
+head(x)
 #this gene is a immunity related gene !!!
 #Investigate expression of selected genes
 #2–3 genes mentioned in the paper and from there extract normalized counts:
-
 #********************************************************
 # plot heatmaps, volcano plots, etc...
 # for heatmaps I would like only the top 50 entries for all results.
@@ -344,12 +338,9 @@ pheatmap(
   annotation_col = as.data.frame(colData(dds)[,"group", drop = FALSE]),
   filename = "heatmap_Case.png"
 )
-
 #********************************************************************
 # volcano plots
 
-library(EnhancedVolcano)
-#all ? 
 EnhancedVolcano(
   res_all,
   lab = rownames(res_all),
@@ -378,7 +369,6 @@ EnhancedVolcano(
 )
 
 # case
-
 EnhancedVolcano(
   res_case,
   lab = rownames(res_case),
@@ -391,21 +381,3 @@ EnhancedVolcano(
 png("volcano_wt.png", width=3000, height=2400, res=300)
 EnhancedVolcano(...)
 dev.off()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
