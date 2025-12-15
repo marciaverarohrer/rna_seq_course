@@ -7,15 +7,16 @@
 
 # Install DESeq2 (from source, which is default on Linux)
 # BiocManager::install("DESeq2", ask = FALSE, update = TRUE)
-# do isntallations in the console !!!
+# installations in the console
 # install.packages("pheatmap")
-# install.packages("EnhancedVolcano") #this doesn't work
+# install.packages("EnhancedVolcano")
 # BiocManager::install("EnhancedVolcano")
 
 # Load the package
 library(DESeq2)
 library(pheatmap)
 library(EnhancedVolcano)
+library(biomaRt) #for adding gene names
 #********************************************************
 # loading and cleaning the data :
 # second directory is from linux
@@ -140,11 +141,11 @@ saveRDS(dds_wt, "dds_wt_object.rds")
 resultsNames(dds_wt) #worked (output: [1] "Intercept""group_Lung_DKO_Case_vs_Lung_WT_Control"...)
 
 #check wt case vs wt control
-res_WT <- results(dds_wt,
+res_wt <- results(dds_wt,
                   contrast = c("group", "Lung_WT_Case", "Lung_WT_Control"),
                   alpha = 0.05)
-summary(res_WT)
-results_WT_ordered <- res_WT[order(res_WT$padj), ]
+summary(res_wt)
+results_WT_ordered <- res_wt[order(res_wt$padj), ]
 head(results_WT_ordered)
 
 #save the table in a csv
@@ -173,7 +174,6 @@ head(results_DKO_ordered)
 write.csv(as.data.frame(results_DKO_ordered), file = "deseq2_results_DKO_comparison.csv")
 
 #***************************************************
-
 # comparing the CASE, WT vs DKO
 #set reference to lung DKO case:
 dds_case <- dds
@@ -192,9 +192,11 @@ res_case
 results_case_ordered <- res_case[order(res_case$padj), ]
 head(results_case_ordered)
 
-
 #save the table in a csv
 write.csv(as.data.frame(results_case_ordered), file = "deseq2_results_Case_comparison.csv")
+
+#*****************************************
+
 
 #********************************************************
   #DATA ANALYSIS AND VISUALIZATION
@@ -204,7 +206,6 @@ var_stab_data <- vst(dds, blind = TRUE)
 
 #PCAplot with the vst data
 plotPCA(var_stab_data, intgroup = "group")
-
 
 #********************************************************
 # WT results (dds_WT)
@@ -321,9 +322,7 @@ pheatmap(
   filename = "heatmap_WT.png"
 )
 
-
-# heatmap DKo
-
+# heatmap DKO
 pheatmap(
   mat_DKO,
   main = "Top 50 : DKO comparison",
@@ -341,40 +340,143 @@ pheatmap(
 #********************************************************************
 # volcano plots
 
-EnhancedVolcano(
-  res_all,
-  lab = rownames(res_all),
-  x = "log2FoldChange",
-  y = "padj",
-  title = "Overall DE Genes"
+#for them to work I want labels with the gene names
+############################################
+#add ensembl gene names to the dataframe
+res_wt_df <- as.data.frame(res_wt)
+res_wt_df$ensembl_gene_id <- rownames(res_wt_df)
+
+res_dko_df <- as.data.frame(res_dko)
+res_dko_df$ensembl_gene_id <- rownames(res_dko_df)
+
+res_case_df <- as.data.frame(res_case)
+res_case_df$ensembl_gene_id <- rownames(res_case_df)
+
+# load Ensembl reference (mouse)
+mart <- useMart("ensembl", dataset = "mmusculus_gene_ensembl")
+
+# convert ENSMUSG IDs → SYMBOLS
+annotations <- getBM(
+  attributes = c("ensembl_gene_id", "mgi_symbol"),
+  filters = "ensembl_gene_id",
+  values = rownames(res_wt),
+  mart = mart
 )
 
+# merge annotation back into results
+res_wt_annot <- merge(res_wt_df, annotations_wt, by = "ensembl_gene_id", all.x = TRUE)
+head(res_wt_annot)
+
+res_dko_annot <- merge(res_dko_df, annotations_dko, by = "ensembl_gene_id", all.x = TRUE)
+head(res_dko_annot)
+
+res_case_annot <- merge(res_case_df, annotations_case, by = "ensembl_gene_id", all.x = TRUE)
+head(res_case_annot)
+
+# make rownames the annotated genes
+rownames(res_wt_annot) <- res_wt_annot$ensembl_gene_id
+rownames(res_dko_annot) <- res_dko_annot$ensembl_gene_id
+rownames(res_case_annot) <- res_case_annot$ensembl_gene_id
+# remove NA padj
+res_wt_annot2 <- res_wt_annot[!is.na(res_wt_annot$padj), ]
+res_dko_annot2 <- res_dko_annot[!is.na(res_dko_annot$padj), ]
+res_case_annot2 <- res_case_annot[!is.na(res_case_annot$padj), ]
+# ranking score
+res_wt_annot2$rank_score <- abs(res_wt_annot2$log2FoldChange) * -log10(res_wt_annot2$padj)
+res_dko_annot2$rank_score <- abs(res_dko_annot2$log2FoldChange) * -log10(res_dko_annot2$padj)
+res_case_annot2$rank_score <- abs(res_case_annot2$log2FoldChange) * -log10(res_case_annot2$padj)
+# extract top 10 Ensembl IDs
+top10_wt_ensembl <- rownames(res_wt_annot2[order(res_wt_annot2$rank_score, decreasing = TRUE), ])[1:10]
+top10_dko_ensembl <- rownames(res_dko_annot2[order(res_dko_annot2$rank_score, decreasing = TRUE), ])[1:10]
+top10_case_ensembl <- rownames(res_case_annot2[order(res_case_annot2$rank_score, decreasing = TRUE), ])[1:10]
+
+# extract corresponding gene symbols (safe, even if duplicated)
+top10_symbols_wt <- res_wt_annot2[top10_wt_ensembl, "mgi_symbol"]
+top10_symbols_dko <- res_dko_annot2[top10_dko_ensembl, "mgi_symbol"]
+top10_symbols_case <- res_case_annot2[top10_case_ensembl, "mgi_symbol"]
+head(top10_symbols_wt)
+head(top10_symbols_case)
+head(top10_symbols_dko)
 # wt
 EnhancedVolcano(
-  res_WT,
-  lab = rownames(res_WT),
-  x = "log2FoldChange",
-  y = "padj",
-  title = "WT Case vs WT Control"
+  res_wt_annot2,
+  lab = res_wt_annot2$mgi_symbol,       # use SYMBOLS instead of Ensembl
+  selectLab = top10_symbols_wt,
+  x = 'log2FoldChange',
+  y = 'padj',
+  title = 'WT case vs WT Control',
+  pCutoff = 0.05,
+  FCcutoff = 1,
+  pointSize = 0.5,
+  borderWidth = 0.2,
+  colAlpha = 0.7,
+  drawConnectors = FALSE,
+  labSize = 4,
+  
+  #removing whitespace
+  xlab = bquote(~Log[2]~ 'fold change'),
+  ylab = bquote(~-Log[10]~ 'adjusted p-value'),
+  subtitle = NULL,
+  caption = NULL,
+  titleLabSize = 16,
+  axisLabSize = 14,
+  
+  # make legend smaller:
+  legendPosition = 'right',
+  legendLabSize = 10,     # smaller text
+  legendIconSize = 1.0,  # smaller symbols
 )
 
 # DKO
-
 EnhancedVolcano(
-  res_DKO,
-  lab = rownames(res_DKO),
-  x = "log2FoldChange",
-  y = "padj",
-  title = "DKO Comparison"
+  res_dko_annot2,
+  lab = res_dko_annot2$mgi_symbol,       # use SYMBOLS instead of Ensembl
+  selectLab = top10_symbols_dko,
+  x = 'log2FoldChange',
+  y = 'padj',
+  title = 'DKO case vs DKO Control',
+  pCutoff = 0.05,
+  FCcutoff = 1,
+  pointSize = 0.5,
+  borderWidth = 0.2,
+  colAlpha = 0.7,
+  legendPosition = 'right',
+  drawConnectors = FALSE,
+  labSize = 4,
+  
+  #removing whitespace
+  xlab = bquote(~Log[2]~ 'fold change'),
+  ylab = bquote(~-Log[10]~ 'adjusted p-value'),
+  subtitle = NULL,
+  caption = NULL,
+  titleLabSize = 16,
+  axisLabSize = 14
 )
 
 # case
 EnhancedVolcano(
-  res_case,
-  lab = rownames(res_case),
-  x = "log2FoldChange",
-  y = "padj",
-  title = "Case Comparison"
+  res_case_annot2,
+  lab = res_case_annot2$mgi_symbol,       # use SYMBOLS instead of Ensembl
+  selectLab = top10_symbols_case,
+  x = 'log2FoldChange',
+  y = 'padj',
+  title = 'WT Case vs DKO Case',
+  pCutoff = 0.05,
+  FCcutoff = 1,
+  pointSize = 0.5,
+  borderWidth = 0.2,
+  colAlpha = 0.7,
+  legendPosition = 'right',
+  drawConnectors = FALSE,
+  labSize = 4,
+  
+  #removing whitespace
+  xlab = bquote(~Log[2]~ 'fold change'),
+  ylab = bquote(~-Log[10]~ 'adjusted p-value'),
+  subtitle = NULL,
+  caption = NULL,
+  titleLabSize = 16,
+  axisLabSize = 14
 )
 
 # to save these images:

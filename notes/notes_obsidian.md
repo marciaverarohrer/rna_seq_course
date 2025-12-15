@@ -18,3 +18,26 @@ If they don’t, it may indicate:
 - Sample mix-ups
 - Strong outliers
 - True biological heterogeneity
+
+Q&A 11.12
+
+condition one, condition 2
+feature counts: how many reads do we have per gene?
+gene 1 cond. 1 , 10 reads, cond. 2, 20 reads
+
+normalization: how many counts per million of sequenced reads
+CPM is counts per million
+nr. of reads can be asked for in the sequencing facility
+
+variance stabilizing t (vst) , we fit sample trying to stabilize what is already known, variability of data should be accounted for. 
+
+importance of replication : how many samples do I have per condition?
+biological replicates are needed to make more reliable conclusions.
+more replicates -> more statistical power
+
+counts is number of reads overlapping in a pathway
+
+one circle is a pathway gene ontology with 5 genes, another circle DEG 200, overlap is number of 
+more counts is more confortability that it is actually significant
+
+gene or reads
