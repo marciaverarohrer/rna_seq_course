@@ -13,3 +13,4 @@ DEAnalysisWorkflow.html
 notes/notes_obsidian.md
 /results/03_counts/featureCounts_counts.txt
 /results/03_counts/readcount.txt
+/results/.*
