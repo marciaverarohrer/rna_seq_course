@@ -337,6 +337,54 @@ pheatmap(
   annotation_col = as.data.frame(colData(dds)[,"group", drop = FALSE]),
   filename = "heatmap_Case.png"
 )
+
+
+#simplify with a function to plot heatmaps:
+plot_heatmap <- function(dds_obj, res_annot, n = 50, title, filename) {
+  #transform
+  vsd <- vst(dds_obj, blind = TRUE)
+  #drop NA and order
+  res_annot <- res_annot[!is.na(res_annot$padj), ]
+  res_ord <- res_annot[order(res_annot$padj), ][1:n, ]
+  #generate the matrix
+  mat <- assay(vsd)[res_ord$ensembl_gene_id, ]
+  rownames(mat) <- res_ord$mgi_symbol
+  
+  pheatmap(
+    mat,
+    main = title,
+    annotation_col = as.data.frame(colData(dds_obj)[, "group", drop = FALSE]),
+    show_rownames = TRUE,
+    fontsize_row = 8,
+    filename = filename
+  )
+}
+
+#WT
+plot_heatmap(
+  dds_obj   = dds_wt,
+  res_annot = res_wt_annot2,
+  n         = 50,
+  title     = "Top 50 DE genes – WT case vs WT control",
+  filename  = "heatmap_WT_labeled.png"
+)
+head(res_wt_annot2)
+
+plot_heatmap(
+  dds_obj   = dds_DKO,
+  res_annot = res_dko_annot2,
+  n         = 50,
+  title     = "Top 50 DE genes – DKO case vs DKO control",
+  filename  = "heatmap_DKO_labeled.png"
+)
+plot_heatmap(
+  dds_obj   = dds_DKO,
+  res_annot = res_dko_annot2,
+  n         = 50,
+  title     = "Top 50 DE genes – DKO case vs DKO control",
+  filename  = "heatmap_DKO.png"
+)
+
 #********************************************************************
 # volcano plots
 
@@ -381,7 +429,7 @@ rownames(res_case_annot) <- res_case_annot$ensembl_gene_id
 res_wt_annot2 <- res_wt_annot[!is.na(res_wt_annot$padj), ]
 res_dko_annot2 <- res_dko_annot[!is.na(res_dko_annot$padj), ]
 res_case_annot2 <- res_case_annot[!is.na(res_case_annot$padj), ]
-# ranking score
+# ranking score to determine 10 most 'significant' DE genes
 res_wt_annot2$rank_score <- abs(res_wt_annot2$log2FoldChange) * -log10(res_wt_annot2$padj)
 res_dko_annot2$rank_score <- abs(res_dko_annot2$log2FoldChange) * -log10(res_dko_annot2$padj)
 res_case_annot2$rank_score <- abs(res_case_annot2$log2FoldChange) * -log10(res_case_annot2$padj)
@@ -390,96 +438,68 @@ top10_wt_ensembl <- rownames(res_wt_annot2[order(res_wt_annot2$rank_score, decre
 top10_dko_ensembl <- rownames(res_dko_annot2[order(res_dko_annot2$rank_score, decreasing = TRUE), ])[1:10]
 top10_case_ensembl <- rownames(res_case_annot2[order(res_case_annot2$rank_score, decreasing = TRUE), ])[1:10]
 
+summary(top10_wt_ensembl)
 # extract corresponding gene symbols (safe, even if duplicated)
 top10_symbols_wt <- res_wt_annot2[top10_wt_ensembl, "mgi_symbol"]
 top10_symbols_dko <- res_dko_annot2[top10_dko_ensembl, "mgi_symbol"]
 top10_symbols_case <- res_case_annot2[top10_case_ensembl, "mgi_symbol"]
-head(top10_symbols_wt)
-head(top10_symbols_case)
-head(top10_symbols_dko)
-# wt
-EnhancedVolcano(
-  res_wt_annot2,
-  lab = res_wt_annot2$mgi_symbol,       # use SYMBOLS instead of Ensembl
-  selectLab = top10_symbols_wt,
-  x = 'log2FoldChange',
-  y = 'padj',
-  title = 'WT case vs WT Control',
-  pCutoff = 0.05,
-  FCcutoff = 1,
-  pointSize = 0.5,
-  borderWidth = 0.2,
-  colAlpha = 0.7,
-  drawConnectors = FALSE,
-  labSize = 4,
-  
-  #removing whitespace
-  xlab = bquote(~Log[2]~ 'fold change'),
-  ylab = bquote(~-Log[10]~ 'adjusted p-value'),
-  subtitle = NULL,
-  caption = NULL,
-  titleLabSize = 16,
-  axisLabSize = 14,
-  
-  # make legend smaller:
-  legendPosition = 'right',
-  legendLabSize = 10,     # smaller text
-  legendIconSize = 1.0,  # smaller symbols
-)
+head(top10_symbols_wt, 10)
+head(top10_symbols_case, 10)
+head(top10_symbols_dko, 10)
 
-# DKO
-EnhancedVolcano(
-  res_dko_annot2,
-  lab = res_dko_annot2$mgi_symbol,       # use SYMBOLS instead of Ensembl
-  selectLab = top10_symbols_dko,
-  x = 'log2FoldChange',
-  y = 'padj',
-  title = 'DKO case vs DKO Control',
-  pCutoff = 0.05,
-  FCcutoff = 1,
-  pointSize = 0.5,
-  borderWidth = 0.2,
-  colAlpha = 0.7,
-  legendPosition = 'right',
-  drawConnectors = FALSE,
-  labSize = 4,
-  
-  #removing whitespace
-  xlab = bquote(~Log[2]~ 'fold change'),
-  ylab = bquote(~-Log[10]~ 'adjusted p-value'),
-  subtitle = NULL,
-  caption = NULL,
-  titleLabSize = 16,
-  axisLabSize = 14
-)
 
-# case
-EnhancedVolcano(
-  res_case_annot2,
-  lab = res_case_annot2$mgi_symbol,       # use SYMBOLS instead of Ensembl
-  selectLab = top10_symbols_case,
-  x = 'log2FoldChange',
-  y = 'padj',
-  title = 'WT Case vs DKO Case',
-  pCutoff = 0.05,
-  FCcutoff = 1,
-  pointSize = 0.5,
-  borderWidth = 0.2,
-  colAlpha = 0.7,
-  legendPosition = 'right',
-  drawConnectors = FALSE,
-  labSize = 4,
-  
-  #removing whitespace
-  xlab = bquote(~Log[2]~ 'fold change'),
-  ylab = bquote(~-Log[10]~ 'adjusted p-value'),
-  subtitle = NULL,
-  caption = NULL,
-  titleLabSize = 16,
-  axisLabSize = 14
+# plotting step with a function (instead of individually)
+plot_volcano <- function(
+    res_df,
+    top_symbols,
+    title_text,
+    p_cutoff = 0.05,
+    fc_cutoff = 1
+) {
+  EnhancedVolcano(
+    res_df,
+    lab = res_df$mgi_symbol,
+    selectLab = top_symbols,
+    x = "log2FoldChange",
+    y = "padj",
+    title = title_text,
+    
+    pCutoff = p_cutoff,
+    FCcutoff = fc_cutoff,
+    
+    pointSize = 0.5,
+    borderWidth = 0.2,
+    colAlpha = 0.7,
+    
+    drawConnectors = TRUE,
+    labSize = 4,
+    max.overlaps = Inf,   # ← ensures all selected labels are attempted
+    
+    xlab = bquote(~Log[2]~" fold change"),
+    ylab = bquote(~-Log[10]~" adjusted p-value"),
+    subtitle = NULL,
+    caption = NULL,
+    
+    titleLabSize = 16,
+    axisLabSize = 14,
+    
+    legendPosition = "right",
+    legendLabSize = 10,
+    legendIconSize = 1
+  )
+}
+plot_volcano(
+  res_df = res_wt_annot2,
+  top_symbols = top10_symbols_wt,
+  title_text = "WT Case vs WT Control"
 )
-
-# to save these images:
-png("volcano_wt.png", width=3000, height=2400, res=300)
-EnhancedVolcano(...)
-dev.off()
+plot_volcano(
+  res_df = res_dko_annot2,
+  top_symbols = top10_symbols_dko,
+  title_text = "DKO Case vs DKO Control"
+)
+plot_volcano(
+  res_df = res_case_annot2,
+  top_symbols = top10_symbols_case,
+  title_text = "WT Case vs DKO Case"
+)

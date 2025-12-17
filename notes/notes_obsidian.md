@@ -41,3 +41,26 @@ one circle is a pathway gene ontology with 5 genes, another circle DEG 200, over
 more counts is more confortability that it is actually significant
 
 gene or reads
+
+Why do we create dds_wt and dds_DKO?
+
+Because the DESeq2 model uses a single reference level for all contrasts.
+
+Your default dds uses:
+reference = Lung_DKO_Case
+So resultsNames(dds) looks like:
+group_Lung_WTケース_vs_Lung_DKO_Case
+group_Lung_WT_Control_vs_Lung_DKO_Case
+..
+This structure cannot produce WT Case vs WT Control directly.
+Therefore you created:
+dds_wt → reference = Lung_WT_Control
+dds_DKO → reference = Lung_DKO_Control
+dds_case → reference = Lung_WT_Case (I assume)
+which comparison for which task? 
+| Comparison              | dds object   | Contrast example                                           |
+| ----------------------- | ------------ | ---------------------------------------------------------- |
+| WT Case vs WT Control   | **dds_wt**   | `contrast = c("group","Lung_WT_Case","Lung_WT_Control")`   |
+| DKO Case vs DKO Control | **dds_DKO**  | `contrast = c("group","Lung_DKO_Case","Lung_DKO_Control")` |
+| WT Case vs DKO Case     | **dds_case** | depends on your object's levels                            |
+| Global                  | dds          | various                                                    |
