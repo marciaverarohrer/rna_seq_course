@@ -378,11 +378,11 @@ plot_heatmap(
   filename  = "heatmap_DKO_labeled.png"
 )
 plot_heatmap(
-  dds_obj   = dds_DKO,
-  res_annot = res_dko_annot2,
+  dds_obj   = dds_case,
+  res_annot = res_case_annot2,
   n         = 50,
-  title     = "Top 50 DE genes – DKO case vs DKO control",
-  filename  = "heatmap_DKO.png"
+  title     = "Top 50 DE genes – WT case vs DKO case",
+  filename  = "heatmap_case_labeled.png"
 )
 
 #********************************************************************
