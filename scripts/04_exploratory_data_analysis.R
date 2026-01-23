@@ -17,6 +17,7 @@ library(DESeq2)
 library(pheatmap)
 library(EnhancedVolcano)
 library(biomaRt) #for adding gene names
+library(patchwork) #for the panels in the figures
 #********************************************************
 # loading and cleaning the data :
 # second directory is from linux
@@ -300,45 +301,6 @@ mat_WT   <- assay(vsd_WT)[top50_WT_genes, ]
 mat_DKO  <- assay(vsd_DKO)[top50_DKO_genes, ]
 mat_case <- assay(vsd_case)[top50_case_genes, ]
 
-# heatmap all
-pheatmap(
-  mat_all,
-  main = "Top 50 DE Genes (All groups)",
-  annotation_col = as.data.frame(colData(dds)[, "group", drop = FALSE]),
-  show_rownames = TRUE,
-  fontsize = 10,
-  fontsize_row = 8,
-  filename = "heatmap_all.png"
-)
-
-# heatmap wt
-pheatmap(
-  mat_WT,
-  main = "Top 50 : WT Case vs WT Control",
-  annotation_col = as.data.frame(colData(dds_wt)[, "group", drop = FALSE]),
-  show_rownames = TRUE,
-  fontsize = 10,
-  fontsize_row = 8,
-  filename = "heatmap_WT.png"
-)
-
-# heatmap DKO
-pheatmap(
-  mat_DKO,
-  main = "Top 50 : DKO comparison",
-  annotation_col = as.data.frame(colData(dds)[,"group", drop = FALSE]),
-  filename = "heatmap_DKO.png"
-)
-
-# heatmap case
-pheatmap(
-  mat_case,
-  main = "Top 50 : Case comparison",
-  annotation_col = as.data.frame(colData(dds)[,"group", drop = FALSE]),
-  filename = "heatmap_Case.png"
-)
-
-
 #simplify with a function to plot heatmaps:
 plot_heatmap <- function(dds_obj, res_annot, n = 50, title, filename) {
   #transform
@@ -359,7 +321,7 @@ plot_heatmap <- function(dds_obj, res_annot, n = 50, title, filename) {
     filename = filename
   )
 }
-
+#scale = "row"
 #WT
 plot_heatmap(
   dds_obj   = dds_wt,
@@ -412,13 +374,13 @@ annotations <- getBM(
 )
 
 # merge annotation back into results
-res_wt_annot <- merge(res_wt_df, annotations_wt, by = "ensembl_gene_id", all.x = TRUE)
+res_wt_annot <- merge(res_wt_df, annotations, by = "ensembl_gene_id", all.x = TRUE)
 head(res_wt_annot)
 
-res_dko_annot <- merge(res_dko_df, annotations_dko, by = "ensembl_gene_id", all.x = TRUE)
+res_dko_annot <- merge(res_dko_df, annotations, by = "ensembl_gene_id", all.x = TRUE)
 head(res_dko_annot)
 
-res_case_annot <- merge(res_case_df, annotations_case, by = "ensembl_gene_id", all.x = TRUE)
+res_case_annot <- merge(res_case_df, annotations, by = "ensembl_gene_id", all.x = TRUE)
 head(res_case_annot)
 
 # make rownames the annotated genes
@@ -447,12 +409,11 @@ head(top10_symbols_wt, 10)
 head(top10_symbols_case, 10)
 head(top10_symbols_dko, 10)
 
-
 # plotting step with a function (instead of individually)
 plot_volcano <- function(
     res_df,
     top_symbols,
-    title_text,
+    title_text, 
     p_cutoff = 0.05,
     fc_cutoff = 1
 ) {
@@ -472,34 +433,55 @@ plot_volcano <- function(
     colAlpha = 0.7,
     
     drawConnectors = TRUE,
-    labSize = 4,
-    max.overlaps = Inf,   # ← ensures all selected labels are attempted
+    max.overlaps = Inf,   # ensures all selected labels are tried
+    boxedLabels = TRUE,          # makes labels easier to separate
+    #force = 2,
+    
+    #extra code to increase font size for readability in the report
+    labSize = 3.6, #this is size of labels inside the plot         
+    titleLabSize = 18, #removed for space  
+    axisLabSize = 18,     
+    legendLabSize = 12,   
+    legendIconSize = 1.5,
+    legendPosition = "right",
+    
     
     xlab = bquote(~Log[2]~" fold change"),
     ylab = bquote(~-Log[10]~" adjusted p-value"),
     subtitle = NULL,
-    caption = NULL,
-    
-    titleLabSize = 16,
-    axisLabSize = 14,
-    
-    legendPosition = "right",
-    legendLabSize = 10,
-    legendIconSize = 1
+    caption = NULL
   )
 }
-plot_volcano(
+wt_volcanoplot <- plot_volcano(
   res_df = res_wt_annot2,
   top_symbols = top10_symbols_wt,
   title_text = "WT Case vs WT Control"
 )
-plot_volcano(
+dko_volcanoplot <- plot_volcano(
   res_df = res_dko_annot2,
   top_symbols = top10_symbols_dko,
   title_text = "DKO Case vs DKO Control"
 )
-plot_volcano(
+case_volcanoplot <- plot_volcano(
   res_df = res_case_annot2,
   top_symbols = top10_symbols_case,
   title_text = "WT Case vs DKO Case"
 )
+#removing the legend for two of the three figures
+wt_volcanoplot  <- wt_volcanoplot  + theme(legend.position = "none")
+dko_volcanoplot <- dko_volcanoplot + theme(legend.position = "none")
+#merge three images together
+combined_volcano <- wt_volcanoplot + dko_volcanoplot + case_volcanoplot +
+  plot_layout(ncol = 3, guides = "collect") &
+  theme(legend.position = "right")
+
+combined_volcano
+#save the plot with the three panels in one .png
+ggsave(
+  "volcano_3panel_newest_try.png",
+  combined_volcano,
+  width = 16,
+  height = 6,
+  dpi = 300
+)
+top10_symbols_case

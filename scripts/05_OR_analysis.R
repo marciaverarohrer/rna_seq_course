@@ -96,5 +96,3 @@ barplot(ego_case, showCategory = 10)+
   theme(plot.title = element_text(size = 14, face = "bold"))
 head(as.data.frame(ego_case), 10)
 
-
-
