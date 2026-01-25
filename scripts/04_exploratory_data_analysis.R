@@ -20,7 +20,7 @@ library(biomaRt) #for adding gene names
 library(patchwork) #for the panels in the figures
 #********************************************************
 # loading and cleaning the data :
-# second directory is from linux
+# second directory is from linux (dual boot within the project time)
 #COUNTS_DIR <- "C:/Users/marci/Master/rna_seq_course/results/03_counts/featureCounts_counts.txt"
 COUNTS_DIR <- "/home/marci/Documents/Uni/AS25/rna_seq/rna_seq_course/results/03_counts/featureCounts_counts.txt"
 # --- 1. Load FeatureCounts table ---
@@ -124,7 +124,7 @@ head(res_all)
 summary(res_all) #this is a table of all genes and their values.
 
 # to have highest ones on top :
-# we sort by the highest padjsuted value! (this should be most significant gene.)
+# we sort by the highest padjusted value! (this should be most significant gene.)
 results_ordered <- res_all[order(res_all$padj), ]
 head(results_ordered)
 resultsNames(dds) #default as reference is the Lung_DKO_case here.
@@ -196,8 +196,6 @@ head(results_case_ordered)
 #save the table in a csv
 write.csv(as.data.frame(results_case_ordered), file = "deseq2_results_Case_comparison.csv")
 
-#*****************************************
-
 
 #********************************************************
   #DATA ANALYSIS AND VISUALIZATION
@@ -260,17 +258,15 @@ norm_counts <- counts(dds, normalized = TRUE)
 # ENSMUSG00000038507 no. 15 in WT comp.
 # ENSMUSG00000025498
 # ENSMUSG00000040033
-# ENSMUSG00000046879 no. 3 in WT comp.
-# ENSMUSG00000078853 no. 2 in WT comp.
+# ENSMUSG00000046879 no. 3 in WT comp. -> Irgm1
+# ENSMUSG00000078853 no. 2 in WT comp. -> Igtp
 
 #********************************************************
-#*
 #View counts for a gene:
 x <- norm_counts["ENSMUSG00000046879", ]
 head(x)
 #this gene is a immunity related gene !!!
-#Investigate expression of selected genes
-#2–3 genes mentioned in the paper and from there extract normalized counts:
+
 #********************************************************
 # plot heatmaps, volcano plots, etc...
 # for heatmaps I would like only the top 50 entries for all results.

@@ -22,7 +22,7 @@ CONTAINER=/containers/apptainer/hisat2_samtools_408dfd02f175cd88.sif
 # makes it quicker for samtools to map reads to positions during later steps
 apptainer exec --bind /data/users/mrohrer:/data/users/mrohrer $CONTAINER samtools faidx $REF_FILE
 
-# 'view' converts sam to bam formats
+# 'view' converts sam to bam formats:
 #apptainer exec $CONTAINER samtools view -hBs -@ ${SLURM_CPUS_PER_TASK} -t ${REF_FILE}.fai ${SAM_FILE} > ${UNSORTED_FILE}
 
 apptainer exec --bind /data/users/mrohrer:/data/users/mrohrer \
